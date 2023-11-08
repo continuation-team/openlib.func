@@ -1,0 +1,373 @@
+{-
+  opeblib.func – open-source extended library for Func
+
+  Copyright (C) 2023 Continuation Team
+
+  This file is part of opeblib.func.
+
+  opeblib.func is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  opeblib.func is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with opeblib.func.  If not, see <https://www.gnu.org/licenses/>.
+-}
+
+#pragma version >=0.4.0;
+
+const slice   ext::addr_none = "2_"s; ;; b{00} as hex
+
+slice   ext::either_slice_ref(slice s) asm "1 LDU SWAP <{ PLDREF CTOS }>CONT IF";
+
+int     ext::addr_none?(slice addr) asm "b{00} PUSHSLICE SDEQ";
+int     ext::addr_std?(slice addr) asm "b{10000000000} PUSHSLICE SDPPFXREV";
+int     ext::addr_std?ext(slice addr) asm """
+  DUP
+  b{10000000000} PUSHSLICE SDPPFXREV SWAP
+  267 INT 0 INT SCHKBITREFSQ
+  AND
+""";
+int     ext::addr::wc(slice addr) asm "REWRITESTDADDR DROP";
+int     ext::addr::hash(slice addr) asm "REWRITESTDADDR NIP";
+
+int     ext::workchains_equal?(slice addr1, slice addr2) asm "REWRITESTDADDR DROP SWAP REWRITESTDADDR DROP EQUAL";
+int     ext::workchain_match?(slice addr, int wc) asm(wc addr) "REWRITESTDADDR DROP EQUAL";
+int     ext::is_basechain?(slice addr) asm "REWRITESTDADDR DROP 0 EQINT";
+int     ext::is_masterchain?(slice addr) asm "REWRITESTDADDR DROP -1 EQINT";
+
+int     ext::slices_equal?(slice a, slice b) asm "SDEQ";
+int     ext::tuple_length(tuple t) asm "TLEN";
+int     ext::my_balance() asm "BALANCE FIRST";
+int     ext::config_hash() asm "CONFIGROOT HASHCU";
+
+cont    c2::get() impure asm "c2 PUSH";
+()      c2::set(cont c) impure asm "c2 POP";
+
+()      c3::jump(int op) impure asm "c3 PUSH JMPX";
+()      c3::exec(int op) impure asm "c3 PUSH CALLX";
+
+forall X -> () c3::jump::stack(int op, X stack) impure asm(stack op) "c3 PUSH JMPX";
+forall X -> () c3::exec::stack(int op, X stack) impure asm(stack op) "c3 PUSH CALLX";
+
+() reserve::exactly(int coins) impure asm "0 INT RAWRESERVE"; ;; 526 gas
+
+() unsafe::reserve::100000000() impure ;; Reserve 0.10 TON. Costs 18 + 26 gas
+  asm "<b x{36e6b809} s, 0 8 u, 100000000 Gram, 0 1 u, <b b> ref, b> PUSHREF c5 POP";
+
+() unsafe::reserve::50000000() impure ;; Reserve 0.05 TON. Costs 18 + 26 gas
+  asm "<b x{36e6b809} s, 0 8 u, 50000000 Gram, 0 1 u, <b b> ref, b> PUSHREF c5 POP";
+
+builder store::one(builder b)      asm "STONE";
+builder store::zero(builder b)     asm "STZERO";
+builder store::2zeroes(builder b)  asm "b{00} STSLICECONST";
+builder store::4zeroes(builder b)  asm "b{0000} STSLICECONST";
+builder store::32zeroes(builder b) asm "x{00000000} STSLICECONST";
+
+builder store::op(builder b, int op) asm(op b) "32 STU";
+builder store::query_id(builder b, int query_id) asm(query_id b) "64 STU";
+
+builder store::onchain_content(builder b)  asm "x{00} STSLICECONST";
+builder store::offchain_content(builder b) asm "x{01} STSLICECONST";
+builder store::snake_format(builder b)     asm "x{00} STSLICECONST";
+builder store::chunks_format(builder b)    asm "x{01} STSLICECONST";
+
+builder store::builder::slice(builder b, builder b2) asm(b2 b) "STB";
+builder store::builder::ref(builder b, builder b2) asm(b2 b) "STBREF";
+builder store::slice(builder b, slice s) asm(s b) "STSLICE";
+builder store::slice::ref(builder b, slice s) asm "NEWC STSLICE STBREFR";
+
+(slice, (slice)) ~load::ref::slice(slice s) asm "LDREFRTOS";
+slice preload::ref::slice(slice s) asm "PLDREF CTOS";
+slice preload::address(slice s) asm "LDMSGADDR DROP";
+int   preload::coins(slice s) asm "LDGRAMS DROP";
+slice preload::either_slice_ref(slice s) asm "1 LDI SWAP <{ PLDREF CTOS }>CONT IF";
+
+;; unsafe funcs
+cell  preload::ref::first(slice s)   asm "0 PLDREFIDX";
+cell  preload::ref::second(slice s)  asm "1 PLDREFIDX";
+cell  preload::ref::third(slice s)   asm "2 PLDREFIDX";
+cell  preload::ref::fourth(slice s)  asm "3 PLDREFIDX";
+
+;; big_coins = VarUInt32 = 5-261 bits
+builder store::big_coins(builder b, int x) asm "STVARUINT32";
+(slice, (int)) ~load::big_coins(slice s) asm "LDVARUINT32";
+int     preload::big_coins(slice s) asm "LDVARUINT32 DROP";
+
+;; ==================================================================================
+
+{-
+  int_msg_info$0    -> 0
+  ihr_disabled:Bool -> 1
+  bounce:Bool       -> 0|1
+  bounced:Bool      -> 0
+  src:MsgAddress    -> 00 (addr_none)
+-}
+builder store::int_msg_info::nobounce(builder b) asm "b{010000} STSLICECONST";
+builder store::int_msg_info::bounce(builder b)   asm "b{011000} STSLICECONST";
+
+
+{-
+  value:CurrencyCollection -> Grams + (Maybe ^Cell) -> 4+1 bit
+  ihr_fee:Grams            -> 4 bit
+  fwd_fee:Grams            -> 4 bit
+  created_lt:uint64        -> 64 bit
+  created_at:uint32        -> 32 bit
+  init:(Maybe (Either StateInit ^StateInit)) -> 0|11
+  body:(Either X ^X)       -> 0|1
+-}
+builder store::int_msg_info::zero&slice(builder b)
+  asm "111 INT STZEROES";
+
+builder store::int_msg_info::zero&ref(builder b)
+  asm "ONE 111 STUR";
+
+builder store::int_msg_info::zero&text(builder b)
+  asm "143 INT STZEROES";
+
+builder store::int_msg_info::zero&init_ref&slice(builder b)
+  asm "6 INT 112 STUR";
+
+builder store::int_msg_info::zero&init_ref&ref(builder b)
+  asm "7 INT 112 STUR";
+
+builder store::int_msg_info::zero&init_slice(builder b)
+  asm "2 INT 111 STUR";
+
+builder store::int_msg_info::slice(builder b)
+  asm "107 INT STZEROES";
+
+builder store::int_msg_info::ref(builder b)
+  asm "1 INT 107 STUR";
+
+builder store::int_msg_info::text(builder b)
+  asm "139 INT STZEROES";
+
+builder store::int_msg_info::init_ref&slice(builder b)
+  asm "6 INT 108 STUR";
+
+builder store::int_msg_info::init_ref&ref(builder b)
+  asm "7 INT 108 STUR";
+
+builder store::int_msg_info::init_ref&text(builder b)
+  asm "25769803776 INT 140 STUR";
+
+builder store::int_msg_info::init_slice(builder b)
+  asm "2 INT 107 STUR";
+
+;; ==================================================================================
+
+
+{-
+  _ split_depth:(Maybe (## 5)) special:(Maybe TickTock)
+  code:(Maybe ^Cell) data:(Maybe ^Cell)
+  library:(HashmapE 256 SimpleLib) = StateInit;
+-}
+builder store::state_init(builder b, cell data, cell code)
+  asm(data code b) "b{00110} STSLICECONST STREF STREF";
+
+
+builder store::addr_std::basechain(builder b)
+  asm "b{10} b{0} x{00} |+ |+ STSLICECONST";
+
+
+slice ext::calc_address(cell state_init) inline {
+{-
+  addr_std$10 anycast:(Maybe Anycast)
+  workchain_id:int8 address:bits256  = MsgAddressInt;
+-}
+  return begin_cell()
+        .store::addr_std::basechain()
+        .store_uint(cell_hash(state_init), 256)
+        .end_cell()
+        .begin_parse();
+}
+
+
+;; ==================================================================================
+;; ================================-Standard-OP's-===================================
+;; ==================================================================================
+
+
+;; Common (used in TEP-62,74,85)
+const int op::excesses               = 0xd53276db;
+builder store::op::excesses(builder b)               asm "x{d53276db} STSLICECONST";
+
+
+;; TEP-62 - NFT
+;; https://github.com/ton-blockchain/TEPs/blob/master/text/0062-nft-standard.md
+const int op::transfer_nft           = 0x5fcc3d14;
+const int op::ownership_assigned     = 0x05138d91;
+const int op::get_static_data        = 0x2fcb26a2;
+const int op::report_static_data     = 0x8b771735;
+builder store::op::transfer_nft(builder b)           asm "x{5fcc3d14} STSLICECONST";
+builder store::op::ownership_assigned(builder b)     asm "x{05138d91} STSLICECONST";
+builder store::op::get_static_data(builder b)        asm "x{2fcb26a2} STSLICECONST";
+builder store::op::report_static_data(builder b)     asm "x{8b771735} STSLICECONST";
+
+
+;; TEP-66 - NFT Royalty
+;; https://github.com/ton-blockchain/TEPs/blob/master/text/0066-nft-royalty-standard.md
+const int op::get_royalty_params     = 0x693d3950;
+const int op::report_royalty_params  = 0xa8cb00ad;
+builder store::op::get_royalty_params(builder b)     asm "x{693d3950} STSLICECONST";
+builder store::op::report_royalty_params(builder b)  asm "x{a8cb00ad} STSLICECONST";
+
+
+;; TEP-74 - Jettons
+;; https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md
+const int op::transfer_jetton        = 0x0f8a7ea5;
+const int op::internal_transfer      = 0x178d4519;
+const int op::transfer_notification  = 0x7362d09c;
+const int op::burn_notification      = 0x7bdd97de;
+builder store::op::transfer_jetton(builder b)        asm "x{0f8a7ea5} STSLICECONST";
+builder store::op::internal_transfer(builder b)      asm "x{178d4519} STSLICECONST";
+builder store::op::transfer_notification(builder b)  asm "x{7362d09c} STSLICECONST";
+builder store::op::burn_notification(builder b)      asm "x{7bdd97de} STSLICECONST";
+
+
+;; TEP-85 - SBT
+;; https://github.com/ton-blockchain/TEPs/blob/master/text/0085-sbt-standard.md
+const int op::prove_ownership        = 0x04ded148;
+const int op::ownership_proof        = 0x0524c7ae;
+const int op::request_owner          = 0xd0c3bfea;
+const int op::owner_info             = 0x0dd607e3;
+const int op::destroy_sbt            = 0x1f04537a;
+const int op::revoke_sbt             = 0x6f89f5e3;
+builder store::op::prove_ownership(builder b)        asm "x{04ded148} STSLICECONST";
+builder store::op::ownership_proof(builder b)        asm "x{0524c7ae} STSLICECONST";
+builder store::op::request_owner(builder b)          asm "x{d0c3bfea} STSLICECONST";
+builder store::op::owner_info(builder b)             asm "x{0dd607e3} STSLICECONST";
+builder store::op::destroy_sbt(builder b)            asm "x{1f04537a} STSLICECONST";
+builder store::op::revoke_sbt(builder b)             asm "x{6f89f5e3} STSLICECONST";
+
+
+;; TEP-89 - Discoverable Jettons Wallets
+;; https://github.com/ton-blockchain/TEPs/blob/master/text/0089-jetton-wallet-discovery.md
+const int op::provide_wallet_address = 0x2c76b973;
+const int op::take_wallet_address    = 0xd1735400;
+builder store::op::provide_wallet_address(builder b) asm "x{2c76b973} STSLICECONST";
+builder store::op::take_wallet_address(builder b)    asm "x{d1735400} STSLICECONST";
+
+
+;; ==================================================================================
+;; ==================================================================================
+;; ==================================================================================
+
+
+builder store::transfer_jettons::no_payload(builder b)
+  asm "b{000000} STSLICECONST";
+
+builder store::internal_transfer::no_payload(builder b) ;; why?
+  asm "b{0000000} STSLICECONST";
+
+
+;; =========
+
+
+builder store::number10(builder b, int x) asm """
+  ZERO                                                        // b x i=0
+  SWAP                                                        // b i=0 x
+  UNTIL:<{                                                    // b i x
+    10 PUSHINT DIVMOD                                         // b i x r
+    48 ADDCONST                                               // b i x r
+    s3 s1 s3 XCHG3                                            // r b x i
+    INC                                                       // r b x i
+    s1 s0 XCPU                                                // r b i x x
+    ISZERO
+  }>
+  DROP
+  REPEAT:<{ 8 STU }>                                          // ..rrr.. b i
+""";
+
+builder store::number16(builder b, int x) asm """
+  ZERO                                                        // b x i=0
+  SWAP                                                        // b i=0 x
+  UNTIL:<{                                                    // b i x
+    16 PUSHINT DIVMOD                                         // b i x r
+    48 ADDCONST                                               // b i x r
+    s3 s1 s3 XCHG3                                            // r b x i
+    INC                                                       // r b x i
+    s1 s0 XCPU                                                // r b i x x
+    ISZERO
+  }>
+  DROP
+  REPEAT:<{ 8 STU }>                                          // ..rrr.. b i
+""";
+
+
+;; =========
+
+
+const uint8::max   = 0xFF;
+const uint16::max  = 0xFFFF;
+const uint32::max  = 0xFFFFFFFF;
+const uint64::max  = 0xFFFFFFFFFFFFFFFF;
+const uint120::max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+const uint256::max = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+
+const coins::max   = uint120::max;
+
+
+;; =========
+
+
+const int error::simple_transfer        = "simple_transfer"c        >> 21;
+const int error::bounce_false           = "bounce_false"c           >> 21;
+const int error::bounced_message        = "bounced_message"c        >> 21;
+const int error::unsupported_op         = "unsupported_op"c         >> 21;
+const int error::unsupported_workchain  = "unsupported_workchain"c  >> 21;
+const int error::invalid_address        = "invalid_address"c        >> 21;
+const int error::incorrect_address      = "incorrect_address"c      >> 21;
+const int error::empty_slice            = "empty_slice"c            >> 21;
+
+
+;; =========
+
+
+() check::access(slice access_addr, slice target_addr) impure inline {
+  throw_unless(error::invalid_address, ext::slices_equal?(access_addr, target_addr));
+}
+
+() check::2access(slice access_addr1, slice access_addr2, slice target_addr) impure inline {
+  throw_unless(error::invalid_address, ext::slices_equal?(access_addr2, target_addr)
+                                     | ext::slices_equal?(access_addr1, target_addr));
+}
+
+() check::bits(slice s) impure inline {
+  throw_unless(error::empty_slice, slice_bits(s));
+}
+
+() check::op(int op) impure inline {
+  throw_unless(error::unsupported_op, op > 524287); ;; 2^19-1
+}
+
+() check::workchain(slice addr) impure inline { ;; throw if not basechain
+   throw_if(error::unsupported_workchain, ext::addr::wc(addr));
+}
+
+() check::simple_transfer(int op) impure inline { ;; throw if op == 0
+  throw_unless(error::simple_transfer, op);
+}
+
+() check::bounce(int flag) impure inline {
+  throw_unless(error::bounce_false, flag);
+}
+
+() check::bounced(int flag) impure inline {
+  throw_if(error::bounced_message, flag);
+}
+
+() check::address_or_none(slice addr) impure inline {
+  throw_if(error::incorrect_address, ext::addr_none?(addr)
+                                   | ext::addr_std?(addr));
+}
+
+() check::address(slice addr) impure inline {
+  throw_if(error::incorrect_address, ext::addr_std?(addr));
+}

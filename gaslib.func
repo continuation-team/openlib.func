@@ -1,0 +1,120 @@
+{-
+  opeblib.func – open-source extended library for Func
+
+  Copyright (C) 2023 Continuation Team
+
+  This file is part of opeblib.func.
+
+  opeblib.func is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  opeblib.func is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with opeblib.func.  If not, see <https://www.gnu.org/licenses/>.
+-}
+
+#pragma version >=0.4.0;
+
+{-
+gas_prices#dd gas_price:uint64 gas_limit:uint64 gas_credit:uint64
+  block_gas_limit:uint64 freeze_due_limit:uint64 delete_due_limit:uint64
+  = GasLimitsPrices;
+
+gas_prices_ext#de gas_price:uint64 gas_limit:uint64 special_gas_limit:uint64 gas_credit:uint64
+  block_gas_limit:uint64 freeze_due_limit:uint64 delete_due_limit:uint64
+  = GasLimitsPrices;
+
+gas_flat_pfx#d1 flat_gas_limit:uint64 flat_gas_price:uint64 other:GasLimitsPrices
+  = GasLimitsPrices;
+
+config_mc_gas_prices#_ GasLimitsPrices = ConfigParam 20;
+config_gas_prices#_ GasLimitsPrices = ConfigParam 21;
+-}
+cell get_gas_config_param() inline {
+  return config_param(21); ;; 21 - basechain, 20 - masterchain
+}
+
+
+(slice, (int, int, int)) load_gas_limits_prices(slice param) inline_ref {
+  int contructor_tag = param~load_uint(8);
+  if (contructor_tag == 0xd1) {
+    int flat_gas_limit = param~load_uint(64);
+    int flat_gas_price = param~load_uint(64);
+    var (gas_price, _, _) = param~load_gas_limits_prices();
+    return (param, (gas_price, flat_gas_limit, flat_gas_price));
+  } elseif ((contructor_tag == 0xde) | (contructor_tag == 0xdd)) {
+    int gas_price = param~load_uint(64); ;; load_gas_prices
+    return (param, (gas_price, 0, 0));
+  } else {
+    return (param, (0, 0, 0));
+  }
+}
+
+
+global int c4::gas_cfg_hash;
+global int c4::gas_price;
+global int c4::flat_gas_limit;
+global int c4::flat_gas_price;
+
+
+() init_gas_prices(slice ds) impure inline {
+  int  prev_gas_cfg_hash  = ds~load_uint(256);
+  cell gas_cfg            = get_gas_config_param();
+  int  gas_cfg_hash       = cell_hash(gas_cfg);
+
+  if (gas_cfg_hash == prev_gas_cfg_hash) {
+    int __gas_price       = ds~load_uint(64);
+    int __flat_gas_limit  = ds~load_uint(64);
+    c4::flat_gas_price    = ds.preload_uint(64);
+    c4::flat_gas_limit    = __flat_gas_limit;
+    c4::gas_price         = __gas_price;
+    c4::gas_cfg_hash      = prev_gas_cfg_hash;
+  } else {
+    c4::gas_cfg_hash      = gas_cfg_hash;
+    slice gas_cfg_slice   = gas_cfg.begin_parse();
+    (int  gas_price,
+     int  flat_gas_limit,
+     int  flat_gas_price) = gas_cfg_slice~load_gas_limits_prices();
+    c4::flat_gas_limit    = flat_gas_limit;
+    c4::gas_price         = gas_price;
+    c4::flat_gas_price    = flat_gas_price;
+  }
+}
+
+
+builder store::default_gas_prices(builder b)
+  asm "ZERO 256 STUR";
+
+
+builder store::gas_prices(builder b) asm """
+  c4::flat_gas_price GETGLOB
+  c4::flat_gas_limit GETGLOB
+  c4::gas_price      GETGLOB
+  c4::gas_cfg_hash   GETGLOB
+  s4 XCHG0 256 STU 64 STU 64 STU 64 STU
+""";
+
+
+int gas_to_gram(int gas_amount) asm """
+  // gas_amount
+  c4::flat_gas_price GETGLOB      // gas_amount flat_gas_price
+  2DUP                            // gas_amount flat_gas_price gas_amount flat_gas_price
+  LESS	                          // gas_amount flat_gas_price f
+  IF:<{	                          // gas_amount flat_gas_price
+    NIP                           // result
+  }>ELSE<{	                      // gas_amount flat_gas_price
+    SWAP                          // flat_gas_price gas_amount
+    c4::flat_gas_limit GETGLOB	  // flat_gas_price gas_amount flat_gas_limit
+    SUB	                          // flat_gas_price _gas_amount
+    c4::gas_price GETGLOB	        // flat_gas_price _gas_amount gas_price
+    16 RSHIFT#	                  // flat_gas_price _gas_amount _gas_price
+    MUL	                          // flat_gas_price __gas_amount
+    ADD	                          // result
+  }>
+""";
