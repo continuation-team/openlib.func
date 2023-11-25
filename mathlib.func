@@ -25,59 +25,59 @@
 int math::sqrt(int x) asm """
   <{
     //  x
-    DUP	            // x x
+    DUP             // x x
     IFNOTRET        // x
-    181 PUSHINT	    // x r=181
+    181 PUSHINT     // x r=181
     s1 s1 PUSH2     // x r=181 xx xx
-    128 PUSHPOW2	  // x r=181 xx xx _1=340282366920938463463374607431768211456
-    GEQ	            // x r=181 xx _f
-    IF:<{	          // x r=181 xx
-      128 RSHIFT#	  // x r xx
-      SWAP	        // x xx r
-      64 LSHIFT#	  // x xx r
-      SWAP	        // x r xx
-    }>	            // x r xx
+    128 PUSHPOW2    // x r=181 xx xx _1=340282366920938463463374607431768211456
+    GEQ             // x r=181 xx _f
+    IF:<{           // x r=181 xx
+      128 RSHIFT#   // x r xx
+      SWAP          // x xx r
+      64 LSHIFT#    // x xx r
+      SWAP          // x r xx
+    }>              // x r xx
     DUP             // x r xx xx
-    64 PUSHPOW2	    // x r xx xx _2=18446744073709551616
-    GEQ	            // x r xx _f
-    IF:<{	          // x r xx
-      64 RSHIFT#	  // x r xx
-      SWAP	        // x xx r
-      32 LSHIFT#	  // x xx r
-      SWAP	        // x r xx
-    }>	            // x r xx
+    64 PUSHPOW2     // x r xx xx _2=18446744073709551616
+    GEQ             // x r xx _f
+    IF:<{           // x r xx
+      64 RSHIFT#    // x r xx
+      SWAP          // x xx r
+      32 LSHIFT#    // x xx r
+      SWAP          // x r xx
+    }>              // x r xx
     DUP             // x r xx xx
-    32 PUSHPOW2	    // x r xx xx _3=4294967296
-    GEQ	            // x r xx _f
-    IF:<{	          // x r xx
-      32 RSHIFT#	  // x r xx
-      SWAP	        // x xx r
-      16 LSHIFT#	  // x xx r
-      SWAP	        // x r xx
-    }>	            // x r xx
+    32 PUSHPOW2     // x r xx xx _3=4294967296
+    GEQ             // x r xx _f
+    IF:<{           // x r xx
+      32 RSHIFT#    // x r xx
+      SWAP          // x xx r
+      16 LSHIFT#    // x xx r
+      SWAP          // x r xx
+    }>              // x r xx
     DUP             // x r xx xx
-    16 PUSHPOW2	    // x r xx xx _4=65536
-    GEQ	            // x r xx _f
-    IF:<{	          // x r xx
-      16 RSHIFT#	  // x r xx
-      SWAP	        // x xx r
-      8 LSHIFT#	    // x xx r
-      SWAP	        // x r xx
-    }>	            // x r xx
-    16 PUSHPOW2	    // x r xx _5=65536
-    ADD	            // x r _6
-    MUL	            // x r
-    18 RSHIFT#	    // x r
+    16 PUSHPOW2     // x r xx xx _4=65536
+    GEQ             // x r xx _f
+    IF:<{           // x r xx
+      16 RSHIFT#    // x r xx
+      SWAP          // x xx r
+      8 LSHIFT#     // x xx r
+      SWAP          // x r xx
+    }>              // x r xx
+    16 PUSHPOW2     // x r xx _5=65536
+    ADD             // x r _6
+    MUL             // x r
+    18 RSHIFT#      // x r
     {
-      2DUP	        // x r x r
-      DIV	          // x r _7
-      ADD	          // x r
-      1 RSHIFT#	    // x r
+      2DUP          // x r x r
+      DIV           // x r _7
+      ADD           // x r
+      1 RSHIFT#     // x r
     } 7 times
-    TUCK	          // r x r
-    DIV	            // r r1
-    2DUP	          // r r1 r r1
-    LESS	          // r r1 _f
+    TUCK            // r x r
+    DIV             // r r1
+    2DUP            // r r1 r r1
+    LESS            // r r1 _f
     -ROT CONDSELCHK // IF:<{ DROP }>ELSE<{ NIP }>
   }>c CALLREF // equivalent to inline_ref
 """;
