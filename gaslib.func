@@ -89,7 +89,7 @@ global int c4::flat_gas_price;
 
 
 builder store::default_gas_prices(builder b)
-  asm "ZERO 256 STUR";
+  asm "8 PUSHPOW2 STZEROES";
 
 
 builder store::gas_prices(builder b) asm """
@@ -105,16 +105,16 @@ int gas_to_gram(int gas_amount) asm """
   // gas_amount
   c4::flat_gas_price GETGLOB      // gas_amount flat_gas_price
   2DUP                            // gas_amount flat_gas_price gas_amount flat_gas_price
-  LESS	                          // gas_amount flat_gas_price f
-  IF:<{	                          // gas_amount flat_gas_price
+  LESS                            // gas_amount flat_gas_price f
+  IF:<{                           // gas_amount flat_gas_price
     NIP                           // result
-  }>ELSE<{	                      // gas_amount flat_gas_price
+  }>ELSE<{                        // gas_amount flat_gas_price
     SWAP                          // flat_gas_price gas_amount
-    c4::flat_gas_limit GETGLOB	  // flat_gas_price gas_amount flat_gas_limit
-    SUB	                          // flat_gas_price _gas_amount
-    c4::gas_price GETGLOB	        // flat_gas_price _gas_amount gas_price
-    16 RSHIFT#	                  // flat_gas_price _gas_amount _gas_price
-    MUL	                          // flat_gas_price __gas_amount
-    ADD	                          // result
+    c4::flat_gas_limit GETGLOB    // flat_gas_price gas_amount flat_gas_limit
+    SUB                           // flat_gas_price _gas_amount
+    c4::gas_price GETGLOB         // flat_gas_price _gas_amount gas_price
+    16 RSHIFT#                    // flat_gas_price _gas_amount _gas_price
+    MUL                           // flat_gas_price __gas_amount
+    ADD                           // result
   }>
 """;
