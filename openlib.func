@@ -320,7 +320,6 @@ const coins::max   = uint120::max;
 const int error::simple_transfer        = "simple_transfer"c        >> 21;
 const int error::bounce_false           = "bounce_false"c           >> 21;
 const int error::bounced_message        = "bounced_message"c        >> 21;
-const int error::unsupported_op         = "unsupported_op"c         >> 21;
 const int error::unsupported_workchain  = "unsupported_workchain"c  >> 21;
 const int error::invalid_address        = "invalid_address"c        >> 21;
 const int error::incorrect_address      = "incorrect_address"c      >> 21;
@@ -341,10 +340,6 @@ const int error::empty_slice            = "empty_slice"c            >> 21;
 
 () check::bits(slice s) impure inline {
   throw_unless(error::empty_slice, slice_bits(s));
-}
-
-() check::op(int op) impure inline {
-  throw_unless(error::unsupported_op, op > 524287); ;; 2^19-1
 }
 
 () check::workchain(slice addr) impure inline { ;; throw if not basechain
