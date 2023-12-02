@@ -290,7 +290,7 @@ builder store::number16(builder b, int x) asm """
   SWAP                                                        // b i=0 x
   UNTIL:<{                                                    // b i x
     16 PUSHINT DIVMOD                                         // b i x r
-    DUP 9 GTINT IF:<{ 55 ADDCONST }>ELSE<{ 48 ADDCONST }>     // b i x r
+    48 ADDCONST DUP 57 GTINT IF:<{ 7 ADDCONST }>              // b i x r
     s3 s1 s3 XCHG3                                            // r b x i
     INC                                                       // r b x i
     s1 s0 XCPU                                                // r b i x x
