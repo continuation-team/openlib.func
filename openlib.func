@@ -359,10 +359,10 @@ const int error::empty_slice            = "empty_slice"c            >> 21;
 }
 
 () check::address_or_none(slice addr) impure inline {
-  throw_if(error::incorrect_address, ext::addr_none?(addr)
-                                   | ext::addr_std?(addr));
+  throw_unless(error::incorrect_address, ext::addr_none?(addr)
+                                       | ext::addr_std?(addr));
 }
 
 () check::address(slice addr) impure inline {
-  throw_if(error::incorrect_address, ext::addr_std?(addr));
+  throw_unless(error::incorrect_address, ext::addr_std?(addr));
 }
