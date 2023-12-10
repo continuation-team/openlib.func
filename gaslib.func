@@ -97,7 +97,7 @@ builder store::gas_prices(builder b) asm """
   c4::flat_gas_limit GETGLOB
   c4::gas_price      GETGLOB
   c4::gas_cfg_hash   GETGLOB
-  s4 XCHG0 256 STU 64 STU 64 STU 64 STU
+  4 ROLL 256 STU 64 STU 64 STU 64 STU
 """;
 
 
